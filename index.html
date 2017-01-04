@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Find XML</title>
+	<script src="http://punit:8000/socket.io/socket.io.js"></script>
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+</head>
+<style>
+	td, th {
+	    padding: 4px;
+	}
+	.app{
+		margin-top: 20px;
+	}
+</style>
+<body>
+	<div class="container">
+		<div class="navbar navbar-default text-center">
+			<h3>Component Carry Forwarding</h3>
+		</div>
+		<div class="row">
+			<div class="col-md-4">
+				<label for="inputPath">Enter Task Repo Path</label>
+				<input type="text" name="inputPath" class="form-control" id="inputPath" value="E:\sim5service\XMLs\TaskRepository.xml">
+			</div>
+			<div class="col-md-2">
+				<button type="submit" class="btn btn-primary" id="searchbtn" style="margin-top:24px;">Search</button>
+			</div>
+			<div class="col-md-2" style="margin-top: 18px;">
+				<h4><a id="downloadAnchorElem" style="display:none">Download</a></h4>
+			</div>
+			<div class="col-md-2" style="margin-top: 18px;">
+				<h4>Total XMLs: <span id="totalXMLs">0</span></h4>
+			</div>
+		</div>
+		<div class="row app">
+			<div class="col-md-3">
+				<h4 id="AccessLabel">ACCESS</h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Total Tasks : <span id="AccessTotal">0</span></h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Matched Instances :<span id="AccessMatches">0</span></h4>
+			</div>
+			<div class="col-md-12">				
+				<table border="1" id="AccessResults" width="100%" style="text-align:center;">
+					<tr>
+						<th class="col-md-4 text-center">XML PATH</th>
+						<th class="col-md-3 text-center">UNIQUE PATHWAYS</th>
+						<th class="col-md-2 text-center">COMP ID</th>
+						<th class="col-md-3 text-center">COMP NAME</th>
+					</tr>				
+				</table>
+			</div>
+		</div>
+		<div class="row app">
+			<div class="col-md-3">
+				<h4 id="WordLabel">WORD</h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Total Tasks : <span id="WordTotal">0</span></h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Matched Instances :<span id="WordMatches">0</span></h4>
+			</div>
+			<div class="col-md-12">
+				<table border="1" id="WordResults" width="100%" style="text-align:center;">
+					<tr>
+						<th class="col-md-4 text-center">XML PATH</th>
+						<th class="col-md-3 text-center">UNIQUE PATHWAYS</th>
+						<th class="col-md-2 text-center">COMP ID</th>
+						<th class="col-md-3 text-center">COMP NAME</th>
+					</tr>				
+				</table>
+			</div>
+		</div>
+		<div class="row app">
+			<div class="col-md-3">
+				<h4 id="ExcelLabel">EXCEL</h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Total Tasks : <span id="ExcelTotal">0</span></h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Matched Instances :<span id="ExcelMatches">0</span></h4>
+			</div>
+			<div class="col-md-12">
+				<table border="1" id="ExcelResults" width="100%" style="text-align:center;">
+					<tr>
+						<th class="col-md-4 text-center">XML PATH</th>
+						<th class="col-md-3 text-center">UNIQUE PATHWAYS</th>
+						<th class="col-md-2 text-center">COMP ID</th>
+						<th class="col-md-3 text-center">COMP NAME</th>
+					</tr>				
+				</table>
+			</div>
+		</div>
+		<div class="row app">
+			<div class="col-md-3">
+				<h4 id="PPTLabel">PPT</h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Total Tasks : <span id="PPTTotal">0</span></h4>
+			</div>
+			<div class="col-md-3">
+				<h4>Matched Instances :<span id="PPTMatches">0</span></h4>
+			</div>
+			<div class="col-md-12">
+				<table border="1" id="PPTResults" width="100%" style="text-align:center;">
+					<tr>
+						<th class="col-md-4 text-center">XML PATH</th>
+						<th class="col-md-3 text-center">UNIQUE PATHWAYS</th>
+						<th class="col-md-2 text-center">COMP ID</th>
+						<th class="col-md-3 text-center">COMP NAME</th>
+					</tr>				
+				</table>
+			</div>
+		</div>
+	</div>
+</body>
+<script type="text/javascript">
+	var socket = io.connect('http://punit:8000'),
+		totalInstances_AllApplications = null,
+		totalTaskCount_AllApplications;
+
+
+	//Toggle Show and Hide of data
+	ToggleDisplay("Access");
+	ToggleDisplay("Word");
+	ToggleDisplay("Excel");
+	ToggleDisplay("PPT");
+
+	$("#searchbtn").click(function(){
+		totalInstances_AllApplications = [0,0,0,0],
+		totalTaskCount_AllApplications = [0,0,0,0]; //Access,Word,Excel,PPT;
+
+		//Clear table on every new search
+		ClearTable("AccessResults");
+		ClearTable("WordResults");
+		ClearTable("ExcelResults");
+		ClearTable("PPTResults");
+
+		socket.emit('search',$("#inputPath").val());
+	});
+
+	socket.on('XMLContent',function(data){
+
+			// just remove the declaration using replace()
+    		data.xmlContent = data.xmlContent.replace('<?xml version="1.0"?>', '');
+    		﻿data.xmlContent = data.xmlContent.replace('<?xml version="1.0" encoding="utf-8"?>', '');
+
+    		data.nextTask_xmlContent = data.nextTask_xmlContent.replace('<?xml version="1.0"?>', '');
+    		﻿data.nextTask_xmlContent = data.nextTask_xmlContent.replace('<?xml version="1.0" encoding="utf-8"?>', '');
+
+				var	xml1 = $.parseXML(data.xmlContent),
+					xml2 = $.parseXML(data.nextTask_xmlContent),
+		  			$Xml1 = $(xml1),
+		  			$Xml2 = $(xml2),
+
+					lastStateTxtID_XML1,
+					startState_LastStep_XML1,
+					openComponents_XML1 = [],
+					startStateComponents_XML2 = [],
+					stateIDs_LastStep_XML1 = [],
+					isLastStates_XML1 = [],
+					uniquePathsOfLastStep_XML1 = [];		
+	
+				
+				//Count Total Tasks of Each Application
+				totalTaskCount_AllApplications = CountTotalTasksOfEachApplication(totalTaskCount_AllApplications,data.currentTask.AppID);
+
+				//Find states with islast="true" in XML1
+				$Xml1.find("states state[islast='true']").each(function(){
+					isLastStates_XML1.push($(this).attr("id"));
+				})
+
+				//Find Last step text ID of XML1
+				lastStateTxtID_XML1 = $Xml1.find('texts_formatted txt:last-child').attr("id");
+				startState_LastStep_XML1 = $Xml1.find('texts_formatted txt:last-child').attr("StateStart");
+
+				//Find all state IDs corresponding to last step in XML1
+				$Xml1.find("state[txt='"+lastStateTxtID_XML1+"']").each(function(){
+						stateIDs_LastStep_XML1.push($(this).attr('id'));
+					});
+
+
+				//Traversing in Last step of XML1 to find all unique pathways to reach end screen(s)
+				uniquePathsOfLastStep_XML1 = FindUniquePathWays($Xml1,startState_LastStep_XML1,stateIDs_LastStep_XML1,isLastStates_XML1);
+				
+
+				//Traverse all unique Paths found and find open components list
+				var tempOpenComponents_XML1 = FindOpenComponents($Xml1,uniquePathsOfLastStep_XML1);
+
+
+				//Mapping the Open Component IDs with Component Names
+				tempOpenComponents_XML1.forEach(function(compID,index){
+					var preloadCompNode = $Xml1.find("preload comps comp[id='"+compID+"']"),
+						compName = preloadCompNode.attr("name");
+
+					//To ignore XML errors in which a comp ID is given but actually component don't exist for that ID
+					if(compName !== undefined){
+						//FILTER ONLY PANES AND DIALOGS
+						var compType = preloadCompNode.attr("type").toLowerCase();
+						if(compType.indexOf("dialog")!==-1 || compType.indexOf("pane")!==-1)
+							openComponents_XML1.push({"compID":compID,"compName":compName});
+					}
+				});
+
+				//Find Components in 1st state of XML2
+				startStateComponents_XML2 = FindComponentsInSecondTask($Xml2);
+
+
+				//Comparing Open components of last state of XML1 and components used in 1st state of XML2 to find carried forward components
+				startStateComponents_XML2.forEach(function(comp_XML2,index){
+					openComponents_XML1.forEach(function(comp_XML1,index){
+						if(comp_XML1.compName === comp_XML2.compName){
+							openComponents_XML1.splice(index,1);
+							return false;
+						}
+					});
+				});
+
+				//Filter Components based on a Ignore List
+				openComponents_XML1 = IgnoreComponentsList(openComponents_XML1,data.currentTask.AppID);
+
+
+				//If any component is remaining in openComponents_XML1 then it means comp is carry forwarding
+				if(openComponents_XML1.length>=1){
+					var compID = "", compName = "", uniquePathsOfEndStep_XML1 = "";
+
+					openComponents_XML1.forEach(function(value,index){
+						compID += "<p>"+value.compID+"</p>";
+						compName += "<p>"+value.compName+"</p>";
+					});
+
+					uniquePathsOfLastStep_XML1.forEach(function(pathArray,index){
+						var pathString = "";
+						pathArray.forEach(function(stateID,stateIndex){
+							pathString += stateID+" - ";
+						});
+						uniquePathsOfEndStep_XML1 += "<p>"+pathString.substr(0,pathString.length-3)+"</p>";
+					});
+
+					IncrementCountAndAppendInTable(data,compID,compName,uniquePathsOfEndStep_XML1);
+				}
+
+
+				//Total Instances
+				var sum=0;
+				totalInstances_AllApplications.forEach(function(v){
+					sum+=v;});
+
+				$("#totalXMLs").html(sum);
+				$("#AccessTotal").html(totalTaskCount_AllApplications[0]);
+				$("#AccessMatches").html(totalInstances_AllApplications[0]);
+
+				$("#WordTotal").html(totalTaskCount_AllApplications[1]);
+				$("#WordMatches").html(totalInstances_AllApplications[1]);
+
+				$("#ExcelTotal").html(totalTaskCount_AllApplications[2]);
+				$("#ExcelMatches").html(totalInstances_AllApplications[2]);
+
+				$("#PPTTotal").html(totalTaskCount_AllApplications[3]);
+				$("#PPTMatches").html(totalInstances_AllApplications[3]);
+
+				// if(currentSocketCount === XMLFound){
+				// 	var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(resultsJSON));
+				// 	var dlAnchorElem = $('#downloadAnchorElem');
+				// 	dlAnchorElem.css({"display":"initial"});
+				// 	dlAnchorElem[0].setAttribute("href",dataStr);
+				// 	dlAnchorElem[0].setAttribute("download", "data.json");
+				// }
+			});
+
+function ToggleDisplay(appName){
+	$("#"+appName+"Label").click(function(){
+		$("#"+appName+"Results").toggle();
+	})
+}
+function AppendInTable(tableID,uniquePathsOfEndStep_XML1,taskID,compID,compName){
+	$("#"+tableID).append("<tr><td>"+taskID+"</td><td>"+uniquePathsOfEndStep_XML1+"</td><td>"+compID+"</td><td>"+compName+"</td></tr>");
+}
+
+function ClearTable(tableID){
+	$("#"+tableID).html('');
+	$("#"+tableID).append("<tr><th class='col-md-4 text-center'>XML PATH</th><th class='col-md-3 text-center'>UNIQUE PATHWAYS</th><th class='col-md-2 text-center'>COMP ID</th><th class='col-md-3 text-center'>COMP NAME</th></tr>");
+}
+
+function IncrementCountAndAppendInTable(data,compID,compName,uniquePathsOfEndStep_XML1){
+	switch(data.currentTask.AppID){
+		case "28" : AppendInTable("AccessResults",uniquePathsOfEndStep_XML1,data.currentTask.TaskID,compID,compName);
+				 totalInstances_AllApplications[0]++;
+				 break;
+		case "26" : AppendInTable("WordResults",uniquePathsOfEndStep_XML1,data.currentTask.TaskID,compID,compName);
+				 totalInstances_AllApplications[1]++;
+				 break;
+		case "27" : AppendInTable("ExcelResults",uniquePathsOfEndStep_XML1,data.currentTask.TaskID,compID,compName);
+				 totalInstances_AllApplications[2]++;
+				 break;
+		case "29" : AppendInTable("PPTResults",uniquePathsOfEndStep_XML1,data.currentTask.TaskID,compID,compName);
+				 totalInstances_AllApplications[3]++;
+				 break;
+	}
+}
+
+function CountTotalTasksOfEachApplication(totalTaskCount_AllApplications,appID){
+	switch(appID){
+		case "28" :totalTaskCount_AllApplications[0]++;
+				 break;
+		case "26" : totalTaskCount_AllApplications[1]++;
+				 break;
+		case "27" : totalTaskCount_AllApplications[2]++;
+				 break;
+		case "29" : totalTaskCount_AllApplications[3]++;
+				 break;
+		default :
+		 		 break;
+	}
+	return totalTaskCount_AllApplications;
+}
+
+function FindUniquePathWays($Xml1,startState_LastStep_XML1,stateIDs_LastStep_XML1,isLastStates_XML1){
+	var stateStack = [[startState_LastStep_XML1]],
+		uniquePaths = [];
+
+	do{
+		//Find all unique followups
+		var uniqueFollowups = [];
+		$Xml1.find("state[id='"+stateStack[0][stateStack[0].length-1]+"'] [followup]").each(function(){
+			var followupID = $(this).attr("followup");
+			if(uniqueFollowups.indexOf(followupID)===-1)
+				uniqueFollowups.push(followupID);
+		});
+
+		var firstArrayOfStack = stateStack[0].slice(0);
+
+		//If followup not in firstArrayOfStack and its of same step then push in stack otherwise if followup is of last state then it means its complete path and push it to final uniquePaths array
+
+		uniqueFollowups.forEach(function(followupID,index){						
+
+			if(firstArrayOfStack.indexOf(followupID) === -1){
+				if(stateIDs_LastStep_XML1.indexOf(followupID)!==-1)
+					stateStack.push(firstArrayOfStack.concat(followupID));
+				//Followup state is Last state then its unique path, else it means XML is wrong
+				else if(isLastStates_XML1.indexOf(followupID)!==-1)
+					uniquePaths.push(firstArrayOfStack.concat(followupID));
+			}	
+		});
+
+		stateStack.shift();	
+
+	}while(stateStack.length!==0);
+
+	return uniquePaths;
+}
+
+function FindOpenComponents($Xml1,uniquePathsOfLastStep_XML1){
+	var openComponents_XML1 = [];
+	//For every pathway find open components list
+	uniquePathsOfLastStep_XML1.forEach(function(pathArray,index){
+		var openComponentsInAPath_XML1 = [];
+
+		//For each pathway, go to every state and deduce whether component is open or close
+		pathArray.forEach(function(stateID,stateIndex){
+			
+			$Xml1.find("state[id='"+stateID+"'] comps").children().each(function(){
+				var compId = $(this).attr("id");
+
+				//If component mode is not remove and compID not already present in openComponentsInAPath_XML1 array then push its compID in openComponentsInAPath_XML1 array else pop its ID
+				if($(this).attr("mode").toLowerCase()!=="remove"){
+					if(openComponentsInAPath_XML1.indexOf(compId)===-1)
+						openComponentsInAPath_XML1.push(compId);
+				}
+				else if(openComponentsInAPath_XML1.indexOf(compId)!==-1)
+					openComponentsInAPath_XML1.splice(openComponentsInAPath_XML1.indexOf(compId),1);
+			});
+		});
+
+		//Append unique open components in finalopenComponents_XML1 array
+		openComponentsInAPath_XML1.forEach(function(value,index){
+			if(openComponents_XML1.indexOf(value)===-1)
+				openComponents_XML1.push(value);
+		});
+
+	});
+
+	return openComponents_XML1;
+}
+
+function FindComponentsInSecondTask($Xml2){
+	var startStateComponents_XML2 = [],
+		startState = $Xml2.find("texts_formatted txt:first-child").attr("StateStart");
+	
+	$Xml2.find("states state[id='"+startState+"'] comps").children().each(function(index){
+		var compID = $(this).attr("id"),
+			compName = $Xml2.find("preload comps comp[id='"+compID+"']").attr("name");
+
+		if($(this).attr("mode").toLowerCase()!=="remove")
+			startStateComponents_XML2[index] = {"compID":compID,"compName":compName};
+	});
+
+	return startStateComponents_XML2;
+}
+
+function IgnoreComponentsList(openComponents_XML1,AppID){
+
+	var tempOpenComponents_XML1 = [],
+		ignoreCompList = {
+		//Access
+		"28" : [
+				"SIMS.Components.Access.AccessContactForm",
+				"SIMS.Components.Access.TableDesignView",
+				"SIMS.Components.Access.RelationshipBoard",
+				"SIMS.Components.Access.BlankTabManager",
+				"SIMS.Components.Access.QueryDesignViewBoard",
+				"SIMS.Components.Access.AccessLayoutView",
+				"SIMS.Components.Access.AccessDataPanel",
+				"SIMS.Components.Access.MacroDesignWindow",
+				"SIMS.Components.Access.SqlView",
+				"SIMS.Components.Access.AccessDesignView",
+				"SIMS.Components.Access.ImageObjectWindow",
+				"SIMS.Components.Access.DataSheetView",
+				"SIMS.Components.Access.Ribbon",
+				"SIMS.Components.Access.AccessFormView",
+				"SIMS.Components.Access.MultipleItemFormVol2",
+				"SIMS.Components.Access.FormLayoutViewVol2",
+				"SIMS.Components.Access.ReportView",
+				"SIMS.Components.Access.ReportLayoutView",
+				"SIMS.Components.Access.ReportLayoutViewVol2",
+				"SIMS.Components.Access.AccessStatusBar",
+				"SIMS.Components.Access.ReportDesignView",
+				"SIMS.Components.Access.FormViewVol2",
+				"SIMS.Components.Access.FormDesignViewVol2",
+				"SIMS.Components.Access.ReportDesignViewVol2"
+			],
+		//Word
+		"26" : [
+			"SIMS.Components.Word.Table",
+			"SIMS.Components.Word.Volume3.DocumentArea",
+			"SIMS.Components.Word.Volume2.DocumentArea",
+			"SIMS.Components.Word.DocumentArea",
+			"SIMS.Components.Word.TableV3",
+			"SIMS.Components.Word.Volume2.Table",
+			"SIMS.Components.Word.Table",
+			"SIMS.Components.Word.Ribbon",
+			"SIMS.Components.FileMenu.Word"
+
+		],
+		//Excel
+		"27" : [
+			"SIMS.Components.Excel.Ribbon",
+			"SIMS.Components.Excel.JSONGrid",
+			"SIMS.Components.FileMenu.Excel"
+		],
+		//PPT
+		"29" : [
+		],
+		"Common" : [			
+			"SIMS.Components.Common.IEBrowser",
+			"SIMS.Components.Common.ImageComponent",
+			"SIMS.Components.Win10.Win10TaskbarComponent",
+			"SIMS.Components2016.Common.W10OfficeActiveTaskbar",
+			"SIMS.Components.Common.TaskBar"
+		]
+	};
+
+	openComponents_XML1.forEach(function(value,index){
+		if(ignoreCompList["26"].indexOf(value.compName) ===-1 && ignoreCompList.Common.indexOf(value.compName) ===-1 && ignoreCompList["27"].indexOf(value.compName) ===-1 && ignoreCompList["28"].indexOf(value.compName) ===-1 && ignoreCompList["29"].indexOf(value.compName) ===-1)
+			tempOpenComponents_XML1.push(openComponents_XML1[index]);
+	});
+
+	return tempOpenComponents_XML1;
+}
+</script>
+</html>
